@@ -41,7 +41,6 @@ public class VoiceRecord extends JFrame {
                 stop.setEnabled(true);
                 play.setEnabled(false);
                 recordAudio();
-                if (audioFinished) record.setEnabled(true);
             }
         };
         record.addActionListener(captureListener);
@@ -54,7 +53,6 @@ public class VoiceRecord extends JFrame {
                 stop.setEnabled(false);
                 play.setEnabled(true);
                 running = false;
-
             }
         };
         stop.addActionListener(stopListener);
@@ -63,17 +61,14 @@ public class VoiceRecord extends JFrame {
 
         ActionListener playListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                playAudio();
                 stop.setEnabled(true);
                 record.setEnabled(false);
                 running = true;
+                playAudio();
                 while (!audioFinished) {
                     if (running) play.setEnabled(false);
                     else play.setEnabled(true);
                 }
-
-
-
             }
         };
         play.addActionListener(playListener);
