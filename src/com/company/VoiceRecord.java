@@ -13,6 +13,7 @@ import java.io.InputStream;
 public class VoiceRecord extends JFrame {
     protected boolean running;
     ByteArrayOutputStream out;
+    volatile boolean audioFinished = true;
 
     /**
      * Create main window and buttons.
@@ -40,6 +41,7 @@ public class VoiceRecord extends JFrame {
                 stop.setEnabled(true);
                 play.setEnabled(false);
                 recordAudio();
+                if (audioFinished) record.setEnabled(true);
             }
         };
         record.addActionListener(captureListener);
@@ -52,6 +54,7 @@ public class VoiceRecord extends JFrame {
                 stop.setEnabled(false);
                 play.setEnabled(true);
                 running = false;
+
             }
         };
         stop.addActionListener(stopListener);
@@ -61,6 +64,16 @@ public class VoiceRecord extends JFrame {
         ActionListener playListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 playAudio();
+                stop.setEnabled(true);
+                record.setEnabled(false);
+                running = true;
+                while (!audioFinished) {
+                    if (running) play.setEnabled(false);
+                    else play.setEnabled(true);
+                }
+
+
+
             }
         };
         play.addActionListener(playListener);
@@ -71,6 +84,61 @@ public class VoiceRecord extends JFrame {
         JFrame frame = new VoiceRecord();
         frame.pack();
         frame.setVisible(true);
+    }
+
+    private void playAudio() {
+        try {
+            byte audio[] = out.toByteArray();
+
+            InputStream input = new ByteArrayInputStream(audio);
+            final AudioFormat format = getFormat();
+            final AudioInputStream ais = new AudioInputStream(input, format, audio.length / format.getFrameSize());
+
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            final SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
+            line.open(format);
+            line.start();
+
+            //Read data in a separated thread.
+            Runnable runner = new Runnable() {
+                int bufferSize = (int) format.getSampleRate() * format.getFrameSize();
+                byte buffer[] = new byte[bufferSize];
+
+                //Open thread channel for reading data from SourceDataLine stream
+                public void run() {
+                    running = true;
+                    try {
+                        int count;
+                        while ((count = ais.read(buffer, 0, buffer.length)) != -1) {
+                            if (count > 0) {
+                                line.write(buffer, 0, count);
+                            }
+                            if (!running) {
+                                line.close();
+                                audioFinished = true;
+                                System.out.println("Play Interapted");
+                            }
+                        }
+                        if (line.isRunning()) {
+                            line.close();
+                            System.out.println("Play Finished");
+                        }
+                        audioFinished = true;
+                        running = false;
+                    } catch (IOException e) {
+                        System.err.println("I/O problems: " + e);
+                        System.exit(-3);
+                    }
+                }
+
+            };
+            Thread playThread = new Thread(runner);
+            playThread.start();
+        } catch (LineUnavailableException e) {
+            System.err.println("Line unavailable: " + e);
+            System.exit(-4);
+        }
+
     }
 
     private AudioFormat getFormat() {
@@ -120,51 +188,5 @@ public class VoiceRecord extends JFrame {
             System.err.println("Line unavailable: " + e);
             System.exit(-2);
         }
-    }
-
-    private void playAudio() {
-        try {
-            byte audio[] = out.toByteArray();
-
-            InputStream input = new ByteArrayInputStream(audio);
-            final AudioFormat format = getFormat();
-            final AudioInputStream ais = new AudioInputStream(input, format, audio.length / format.getFrameSize());
-
-            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-            final SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(format);
-            line.start();
-
-
-            //Read data in a separated thread.
-            Runnable runner = new Runnable() {
-                int bufferSize = (int) format.getSampleRate() * format.getFrameSize();
-                byte buffer[] = new byte[bufferSize];
-
-                //Open thread channel for reading data from SourceDataLine stream
-                public void run() {
-                    try {
-                        int count;
-                        while ((count = ais.read(buffer, 0, buffer.length)) != -1) {
-                            if (count > 0) {
-                                line.write(buffer, 0, count);
-                            }
-                        }
-                        line.drain();
-                        line.close();
-                    } catch (IOException e) {
-                        System.err.println("I/O problems: " + e);
-                        System.exit(-3);
-                    }
-                }
-
-            };
-            Thread playThread = new Thread(runner);
-            playThread.start();
-        } catch (LineUnavailableException e) {
-            System.err.println("Line unavailable: " + e);
-            System.exit(-4);
-        }
-
     }
 }
