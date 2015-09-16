@@ -70,7 +70,7 @@ public class VoiceRecord extends JFrame {
     public static void main(String args[]) {
         JFrame frame = new VoiceRecord();
         frame.pack();
-        frame.show();
+        frame.setVisible(true);
     }
 
     private AudioFormat getFormat() {
