@@ -62,12 +62,16 @@ public class VoiceRecord extends JFrame {
         ActionListener playListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 stop.setEnabled(true);
+                play.setEnabled(false);
                 record.setEnabled(false);
                 running = true;
                 playAudio();
-                while (!audioFinished) {
-                    if (running) play.setEnabled(false);
-                    else play.setEnabled(true);
+                try {
+                    do {
+                        if (!running) play.setEnabled(true);
+                    } while (audioFinished);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
                 }
             }
         };
