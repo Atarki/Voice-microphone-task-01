@@ -11,16 +11,17 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class VoiceRecord extends JFrame {
-    protected boolean running;
-    ByteArrayOutputStream out;
-    volatile boolean audioFinished = true;
-
     /**
      * Create main window and buttons.
      * Using old awt technology.
      */
+    public volatile boolean running = false;
+    public volatile boolean audioFinished = false;
+    public ByteArrayOutputStream out;
+    public AudioFormat format;
+
     public VoiceRecord() {
-        super("Voice Record ");
+        setTitle("Voice Record ");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         Container content = getContentPane();
         Dimension d = new Dimension(300, 150);
@@ -29,10 +30,15 @@ public class VoiceRecord extends JFrame {
         final JButton record = new JButton("Record");
         final JButton stop = new JButton("Stop");
         final JButton play = new JButton("Play");
+        final JButton image = new JButton(new ImageIcon("src/record.png"));
+
 
         record.setEnabled(true);
         stop.setEnabled(false);
         play.setEnabled(false);
+        image.setEnabled(false);
+
+        content.add(image, BorderLayout.PAGE_START);
 
         //buttons actions
         ActionListener captureListener = new ActionListener() {
@@ -44,7 +50,7 @@ public class VoiceRecord extends JFrame {
             }
         };
         record.addActionListener(captureListener);
-        content.add(record, BorderLayout.NORTH);
+        content.add(record, BorderLayout.LINE_START);
 
 
         ActionListener stopListener = new ActionListener() {
@@ -61,22 +67,14 @@ public class VoiceRecord extends JFrame {
 
         ActionListener playListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                record.setEnabled(false);
                 stop.setEnabled(true);
                 play.setEnabled(false);
-                record.setEnabled(false);
-                running = true;
                 playAudio();
-                try {
-                    do {
-                        if (!running) play.setEnabled(true);
-                    } while (audioFinished);
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
             }
         };
         play.addActionListener(playListener);
-        content.add(play, BorderLayout.SOUTH);
+        content.add(play, BorderLayout.LINE_END);
     }
 
     public static void main(String args[]) {
@@ -85,16 +83,19 @@ public class VoiceRecord extends JFrame {
         frame.setVisible(true);
     }
 
-    private void playAudio() {
+    public synchronized boolean runningFalse() {
+        return running = false;
+    }
+
+    public synchronized void playAudio() {
         try {
             byte audio[] = out.toByteArray();
-
             InputStream input = new ByteArrayInputStream(audio);
-            final AudioFormat format = getFormat();
-            final AudioInputStream ais = new AudioInputStream(input, format, audio.length / format.getFrameSize());
+            format = getFormat();
+            AudioInputStream ais = new AudioInputStream(input, format, audio.length / format.getFrameSize());
 
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-            final SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
+            SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
             line.open(format);
             line.start();
 
@@ -115,21 +116,21 @@ public class VoiceRecord extends JFrame {
                             if (!running) {
                                 line.close();
                                 audioFinished = true;
-                                System.out.println("Play Interapted");
+                                runningFalse();
+                                System.out.println("Play Interrupted");
                             }
                         }
-                        if (line.isRunning()) {
-                            line.close();
+                        if (line.isOpen()) {
                             System.out.println("Play Finished");
+                            line.close();
+                            runningFalse();
+                            audioFinished = true;
                         }
-                        audioFinished = true;
-                        running = false;
                     } catch (IOException e) {
                         System.err.println("I/O problems: " + e);
                         System.exit(-3);
                     }
                 }
-
             };
             Thread playThread = new Thread(runner);
             playThread.start();
@@ -137,24 +138,15 @@ public class VoiceRecord extends JFrame {
             System.err.println("Line unavailable: " + e);
             System.exit(-4);
         }
-
     }
 
-    private AudioFormat getFormat() {
-        float sampleRate = 44100;
-        int sampleSizeInBits = 16;
-        int channels = 2;//2- stereo 1-mono
-        boolean signed = true;
-        boolean bigEndian = true;
-        return new AudioFormat(sampleRate, sampleSizeInBits, channels, signed, bigEndian);
-    }
-
-    private void recordAudio() {
+    public void recordAudio() {
         try {
-            final AudioFormat format = getFormat();
+            format = getFormat();
             //Open channel for data stream
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
-            final TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
+            TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
+//            if (line != null) line.close();
             line.open(format);
             line.start();
 
@@ -175,6 +167,7 @@ public class VoiceRecord extends JFrame {
                             }
                         }
                         out.close();
+                        line.close();
                     } catch (IOException e) {
                         System.err.println("I/O problems: " + e);
                         System.exit(-1);
@@ -187,5 +180,14 @@ public class VoiceRecord extends JFrame {
             System.err.println("Line unavailable: " + e);
             System.exit(-2);
         }
+    }
+
+    private AudioFormat getFormat() {
+        float sampleRate = 44100;
+        int sampleSizeInBits = 16;
+        int channels = 2;//2- stereo 1-mono
+        boolean signed = true;
+        boolean bigEndian = true;
+        return new AudioFormat(sampleRate, sampleSizeInBits, channels, signed, bigEndian);
     }
 }
