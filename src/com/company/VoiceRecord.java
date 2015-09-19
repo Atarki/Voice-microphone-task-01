@@ -16,29 +16,31 @@ public class VoiceRecord extends JFrame {
      * Using old awt technology.
      */
     public volatile boolean running = false;
-    public volatile boolean audioFinished = false;
     public ByteArrayOutputStream out;
     public AudioFormat format;
+    public String infoText = "Voice recorder";
 
     public VoiceRecord() {
         setTitle("Voice Record ");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         Container content = getContentPane();
-        Dimension d = new Dimension(300, 150);
+        Dimension d = new Dimension(300, 200);
         content.setPreferredSize(d);
 
         final JButton record = new JButton("Record");
         final JButton stop = new JButton("Stop");
         final JButton play = new JButton("Play");
-        final JButton image = new JButton(new ImageIcon("src/record.png"));
-
+        final JButton image = new JButton(new ImageIcon("src/images/record.png"));
+        final JLabel infoLabel = new JLabel(infoText);
 
         record.setEnabled(true);
         stop.setEnabled(false);
         play.setEnabled(false);
         image.setEnabled(false);
+        infoLabel.setEnabled(true);
 
-        content.add(image, BorderLayout.PAGE_START);
+        content.add(image, BorderLayout.PAGE_START); //Record logo
+        content.add(infoLabel, BorderLayout.PAGE_END);
 
         //buttons actions
         ActionListener captureListener = new ActionListener() {
@@ -46,6 +48,7 @@ public class VoiceRecord extends JFrame {
                 record.setEnabled(false);
                 stop.setEnabled(true);
                 play.setEnabled(false);
+                infoLabel.setText("Recording...");
                 recordAudio();
             }
         };
@@ -58,6 +61,7 @@ public class VoiceRecord extends JFrame {
                 record.setEnabled(true);
                 stop.setEnabled(false);
                 play.setEnabled(true);
+                infoLabel.setText("Stopped...");
                 running = false;
             }
         };
@@ -70,7 +74,8 @@ public class VoiceRecord extends JFrame {
                 record.setEnabled(false);
                 stop.setEnabled(true);
                 play.setEnabled(false);
-                playAudio();
+                infoLabel.setText("Playing...");
+                playAudio(record,stop,play,infoLabel);
             }
         };
         play.addActionListener(playListener);
@@ -83,11 +88,7 @@ public class VoiceRecord extends JFrame {
         frame.setVisible(true);
     }
 
-    public synchronized boolean runningFalse() {
-        return running = false;
-    }
-
-    public synchronized void playAudio() {
+    public void playAudio(final JButton record, final JButton stop,final JButton play, final JLabel infoLabel) {
         try {
             byte audio[] = out.toByteArray();
             InputStream input = new ByteArrayInputStream(audio);
@@ -115,16 +116,14 @@ public class VoiceRecord extends JFrame {
                             }
                             if (!running) {
                                 line.close();
-                                audioFinished = true;
-                                runningFalse();
-                                System.out.println("Play Interrupted");
                             }
                         }
                         if (line.isOpen()) {
-                            System.out.println("Play Finished");
                             line.close();
-                            runningFalse();
-                            audioFinished = true;
+                            record.setEnabled(true);
+                            stop.setEnabled(false);
+                            play.setEnabled(true);
+                            infoLabel.setText("Playing completed...");
                         }
                     } catch (IOException e) {
                         System.err.println("I/O problems: " + e);
@@ -134,6 +133,7 @@ public class VoiceRecord extends JFrame {
             };
             Thread playThread = new Thread(runner);
             playThread.start();
+
         } catch (LineUnavailableException e) {
             System.err.println("Line unavailable: " + e);
             System.exit(-4);
@@ -146,7 +146,6 @@ public class VoiceRecord extends JFrame {
             //Open channel for data stream
             DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
             TargetDataLine line = (TargetDataLine) AudioSystem.getLine(info);
-//            if (line != null) line.close();
             line.open(format);
             line.start();
 
