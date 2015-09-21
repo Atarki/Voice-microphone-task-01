@@ -5,6 +5,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +21,7 @@ public class VoiceRecord extends JFrame {
     public ByteArrayOutputStream out;
     public AudioFormat format;
     public String infoText = "Voice recorder";
+    public volatile boolean protectCheck = false;
 
     public VoiceRecord() {
         setTitle("Voice Record ");
@@ -26,23 +29,35 @@ public class VoiceRecord extends JFrame {
         Container content = getContentPane();
         Dimension d = new Dimension(300, 200);
         content.setPreferredSize(d);
+        ImageIcon img1 = new ImageIcon("src/images/record.png");
+        ImageIcon img2 = new ImageIcon("src/images/record_protect.png");
 
         final JButton record = new JButton("Record");
         final JButton stop = new JButton("Stop");
         final JButton play = new JButton("Play");
-        final JButton image = new JButton(new ImageIcon("src/images/record.png"));
         final JLabel infoLabel = new JLabel(infoText);
+        final JToggleButton protect = new JToggleButton(img1);
 
         record.setEnabled(true);
         stop.setEnabled(false);
         play.setEnabled(false);
-        image.setEnabled(false);
         infoLabel.setEnabled(true);
+        protect.setEnabled(true);
+        protect.setSelectedIcon(img2);
 
-        content.add(image, BorderLayout.PAGE_START); //Record logo
         content.add(infoLabel, BorderLayout.PAGE_END);
 
         //buttons actions
+        ItemListener protectListener = new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                protectCheck = protect.isSelected();
+            }
+        };
+        protect.addItemListener(protectListener);
+        content.add(protect, BorderLayout.PAGE_START);
+
+
         ActionListener captureListener = new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 record.setEnabled(false);
@@ -111,6 +126,14 @@ public class VoiceRecord extends JFrame {
                     try {
                         int count;
                         while ((count = ais.read(buffer, 0, buffer.length)) != -1) {
+                            //Encrypt secure part
+                            if (protectCheck) {
+                                for (int i = 0; i < bufferSize; i++) {
+                                    int b = (int)buffer[i];
+                                    b = b >> 31;// moving byte on 31 circle
+                                    buffer[i] = (byte)b;
+                                }
+                            }
                             if (count > 0) {
                                 line.write(buffer, 0, count);
                             }
