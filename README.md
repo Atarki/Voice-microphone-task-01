@@ -7,3 +7,4 @@ This is a test work, implementation of microphone capture.
 * Program using old one swing.
 * Captures to RAM.
 * Plays from RAM.
+* Has protection(crypt) function.
