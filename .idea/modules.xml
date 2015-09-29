@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/src/Recorder.iml" filepath="$PROJECT_DIR$/src/Recorder.iml" />
       <module fileurl="file://$PROJECT_DIR$/Voice_chat_task_01.iml" filepath="$PROJECT_DIR$/Voice_chat_task_01.iml" />
     </modules>
   </component>
