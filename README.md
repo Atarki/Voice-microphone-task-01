@@ -1,4 +1,4 @@
-# README #
+# Voice capture application. #
 
 This is a test work, implementation of microphone capture.
 
